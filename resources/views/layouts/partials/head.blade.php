@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <link rel="stylesheet" href="{{ asset('assets/css/adminlte.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/ai.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
+   <link rel="stylesheet" href="{{ url('public/assets/css/adminlte.css') }}" />
+    <link rel="stylesheet" href="{{ url('public/assets/css/ai.css') }}" />
+    <link rel="stylesheet" href="{{ url('public/assets/css/custom.css') }}">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css" />
