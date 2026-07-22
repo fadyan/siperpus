@@ -5,6 +5,10 @@
         "api/index.php": { "runtime": "vercel-php@0.7.4" }
     },
     "routes": [
+        { "handle": "filesystem"
+     }, 
+        { "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf))", "dest": "/public/$1" 
+    },
         {
             "src": "/upload/(.*)",
             "dest": "/public/upload/$1"
