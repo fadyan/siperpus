@@ -1,0 +1,174 @@
+/* =====================================================
+   SIPERPUS DDI CAMBALAGI - MODERN LOGIN
+===================================================== */
+
+/* ===========================
+   Background
+=========================== */
+
+body.login-page{
+    background: url("../img/background.jpg") no-repeat center center fixed;
+    background-size: cover;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Overlay gelap */
+
+body.login-page::before{
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 1;
+}
+
+/* ===========================
+   Wrapper
+=========================== */
+
+.login-wrapper{
+    position: relative;
+    z-index: 2;
+
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+}
+
+/* ===========================
+   Header
+=========================== */
+
+.logo{
+    width: 130px;
+}
+
+.login-header h1{
+    color: #fff;
+    font-size: 42px;
+    font-weight: 700;
+    text-shadow: 0 5px 15px rgba(0,0,0,.5);
+}
+
+.login-header p{
+    color: rgba(255,255,255,.9);
+    font-size: 18px;
+}
+
+/* ===========================
+   Login Card
+=========================== */
+
+.login-card{
+    width: 420px;
+    margin-top: 25px;
+
+    padding: 35px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,.15);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,.25);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,.35);
+}
+
+/* ===========================
+   Input Group
+=========================== */
+
+.input-group-text{
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
+    color: white;
+}
+
+.form-control{
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
+    color: white;
+    height: 50px;
+}
+
+.form-control::placeholder{
+    color: rgba(255,255,255,.75);
+}
+
+.form-control:focus{
+    background: rgba(255,255,255,.22);
+    color: white;
+    border-color: rgba(255,255,255,.45);
+    box-shadow: none;
+}
+
+/* ===========================
+   Button
+=========================== */
+
+.btn-success{
+    background: #198754;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 17px;
+    transition: .3s;
+}
+
+.btn-success:hover{
+    background: #157347;
+    transform: translateY(-2px);
+}
+
+/* ===========================
+   Alert
+=========================== */
+
+.alert{
+    border-radius: 10px;
+}
+
+/* ===========================
+   Responsive
+=========================== */
+
+@media (max-width:576px){
+
+    .login-card{
+        width: 100%;
+        padding: 25px;
+    }
+
+    .login-header h1{
+        font-size: 30px;
+    }
+
+    .login-header p{
+        font-size: 15px;
+    }
+
+    .logo{
+        width: 100px;
+    }
+}
+#togglePassword{
+    cursor:pointer;
+    border-left:none;
+}
+
+#togglePassword:hover{
+    background:rgba(255,255,255,.15);
+}
+
+#togglePassword:focus{
+    box-shadow:none;
+}
