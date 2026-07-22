@@ -14,6 +14,6 @@ class kelas_group extends Model
 
     public function kelas()
     {
-        return $this->belongsTo(kelas::class,'kelas_id');
+        return $this->belongsTo(Kelas::class,'kelas_id');
     }
 }
