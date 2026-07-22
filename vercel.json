@@ -7,11 +7,11 @@
     "routes": [
         {
             "src": "/build/(.*)",
-            "dest": "/public/build/"
+            "dest": "/public/build/$1"
         },
         {
             "src": "/upload/(.*)",
-            "dest": "/public/upload/"
+            "dest": "/public/upload/$1"
         },
         {
             "src": "/assets/(.*)",
@@ -19,7 +19,7 @@
         },
         {
             "src": "/vendors/(.*)",
-            "dest": "/public/vendors/"
+            "dest": "/public/vendors/$1"
         },
         {
             "src": "/(.*)",
