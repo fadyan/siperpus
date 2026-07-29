@@ -6,36 +6,6 @@
 <!-- AI PANEL -->
 <div id="aiPanel">
 
-    <!-- Sidebar -->
-    <!-- <div class="ai-sidebar">
-
-        <button class="ai-new-chat">
-            <i class="bi bi-plus-lg"></i>
-            Chat Baru
-        </button>
-
-        <div class="ai-history">
-
-            <div class="ai-history-item">
-                <i class="bi bi-chat-left-text"></i>
-                Selamat Datang
-            </div>
-
-            <div class="ai-history-item">
-                <i class="bi bi-chat-left-text"></i>
-                Cara Meminjam Buku
-            </div>
-
-            <div class="ai-history-item">
-                <i class="bi bi-chat-left-text"></i>
-                Buku Informatika
-            </div>
-
-        </div>
-
-    </div> -->
-
-
     <!-- Content -->
     <div class="ai-content">
 

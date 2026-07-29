@@ -4,96 +4,84 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Models\Buku;
 use App\Models\Kueri;
 use Illuminate\Support\Facades\DB;
 
-
 class AIChatController extends Controller
 {
-    
     public function chat(Request $request)
     {
-       $message = strtolower(trim($request->message));
+        $message = trim($request->message);
 
-        // ==========================
-        // RESPON PERCAKAPAN UMUM
-        // ==========================
+        try {
+            $intent = $this->extractIntent($message);
+            $books = $this->searchBook($intent);
 
-        $conversation = [
-            [
-                'keywords' => ['assalamualaikum'],
-                'answer' => 'Waalaikumsalam warahmatullahi wabarakatuh. Selamat datang di Perpustakaan DDI Cambalagi. Ada buku yang ingin saya bantu carikan?'
-            ],
-            [
-                'keywords' => ['selamat pagi'],
-                'answer' => 'Selamat pagi!  Ada buku yang ingin saya bantu carikan hari ini?'
-            ],
-            [
-                'keywords' => ['selamat siang'],
-                'answer' => 'Selamat siang!  Ada yang bisa saya bantu mencari buku?'
-            ],
-            [
-                'keywords' => ['selamat sore'],
-                'answer' => 'Selamat sore!  Ada buku yang sedang Anda cari?'
-            ],
-            [
-                'keywords' => ['selamat malam'],
-                'answer' => 'Selamat malam!  Ada buku yang ingin saya bantu carikan?'
-            ],
-            [
-                'keywords' => ['halo', 'hai', 'hello', 'hallo'],
-                'answer' => 'Halo!  Selamat datang di Perpustakaan DDI Cambalagi. Ada buku yang ingin saya bantu carikan?'
-            ],
-            [
-                'keywords' => ['siapa kamu', 'kamu siapa', 'anda siapa', 'siapa anda', 'perkenalkan dirimu'],
-                'answer' => 'Saya adalah AI Asisten Perpustakaan DDI Cambalagi. Saya siap membantu Anda mencari informasi buku berdasarkan data yang tersedia di sistem perpustakaan.'
-            ],
-            [
-                'keywords' => ['apa fungsimu', 'kamu bisa apa', 'apa tugasmu', 'apa yang bisa kamu lakukan'],
-                'answer' => ' Saya bisa membantu Anda mencari informasi buku berdasarkan data yang tersedia di sistem perpustakaan.'
-            ],
-            [
-                'keywords' => ['terima kasih', 'makasih', 'thanks'],
-                'answer' => 'Sama-sama. Senang bisa membantu. 😊'
-            ],
-            [
-                'keywords' => ['apa kabar', 'gimana kabarmu'],
-                'answer' => 'Alhamdulillah Baik, terima kasih. Saya disini selalu siap membantu Anda mencari informasi buku di perpustakaan.'
-            ]
-        ];
+            $answer = $this->generateResponse($message, $books);
 
-        foreach ($conversation as $item) {
+            return response()->json([
+                'answer' => $answer
+            ]);
 
-            foreach ($item['keywords'] as $keyword) {
+        } catch (\Exception $e) {
+            return response()->json([
+                'answer' => $e->getMessage()
+            ], 500);
+        }
+    }
 
-                // Hanya balas jika isi pesan hampir sama dengan keyword
-                if ($message == $keyword) {
+    /**
+     * Fungsi pusat untuk mengirim request ke Groq dengan sistem multi-key fallback
+     */
+    private function sendToGroqWithFallback(array $payload)
+    {
+        $apiKeys = config('services.groq.keys');
+        $apiKeys = array_filter($apiKeys);
 
-                    return response()->json([
-                        'answer' => $item['answer']
-                    ]);
+        if (empty($apiKeys)) {
+            throw new \Exception('API Key Groq belum dikonfigurasi di sistem.');
+        }
+
+        $response = null;
+        $success = false;
+        $lastErrorMessage = 'Terjadi gangguan pada koneksi AI.';
+
+        foreach ($apiKeys as $index => $apiKey) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type' => 'application/json',
+                ])->timeout(30)->post('https://api.groq.com/openai/v1/chat/completions', $payload);
+
+                if ($response->successful()) {
+                    $success = true;
+                    break;
                 }
+
+                $errorData = $response->json();
+                $errorMessage = $errorData['error']['message'] ?? '';
+                $lastErrorMessage = $errorMessage ?: $lastErrorMessage;
+
+                if ($response->status() == 429 || stripos($errorMessage, 'rate_limit') !== false || stripos($errorMessage, 'quota') !== false) {
+                    Log::warning("API Key ke-" . ($index + 1) . " terkena rate limit. Berpindah ke key selanjutnya...");
+                    continue;
+                }
+
+                throw new \Exception($errorMessage ?: 'Gagal memproses permintaan AI.');
+
+            } catch (\Exception $e) {
+                $lastErrorMessage = $e->getMessage();
+                Log::warning("Gagal menggunakan API Key ke-" . ($index + 1) . ": " . $e->getMessage());
             }
         }
 
-        // ==========================
-        // LANJUTKAN KE AI
-        // ==========================
+        if (!$success) {
+            throw new \Exception("Maaf, batas penggunaan seluruh API AI sedang habis (rate limit) atau terjadi gangguan. Silakan coba beberapa saat lagi.");
+        }
 
-        $intent = $this->extractIntent($request->message);
-
-        $books = $this->searchBook($intent);
-
-        $answer = $this->generateResponse(
-            $request->message,
-            $books
-        );
-
-        return response()->json([
-            'answer' => $answer
-        ]);
-
+        return $response;
     }
 
     private function generateResponse($question, $books)
@@ -101,69 +89,46 @@ class AIChatController extends Controller
         if ($books->isEmpty()) {
             $metadata = "DATA TIDAK DITEMUKAN";
         } else {
-
             $metadata = "";
-
             foreach ($books as $book) {
-
-                $metadata .= "
-                Judul      : {strtolower($book->judul)}     
-                Pengarang  : {$book->pengarang}
-                Penerbit   : " . ($book->penerbit?->nama ?? '-') . "
-                Kategori   : " . ($book->kelas?->nama ?? '-') . "
-                Rak        : " . ($book->rak_buku?->nama ?? '-') . "
-                Tahun      : {$book->tahun}
-                Jumlah     : {$book->jumlah}
-                Deskripsi     : {strtolower($book->deskripsi)}
-
-                ";
+                $namaRak = $book->rak_buku?->nama_rak ?? '-';
+                $namaKelas = $book->kelas?->nama ?? '-';
+                $namaPenerbit = $book->penerbit?->nama_penerbit ?? '-';
+                $deskripsiBuku = $book->deskripsi ?? 'Tidak ada ringkasan deskripsi khusus untuk buku ini.';
+                
+                $metadata .= "- Judul: " . ucwords(strtolower($book->judul)) . " | Kelas: {$namaKelas} | Pengarang: {$book->pengarang} | Penerbit: {$namaPenerbit} | Rak: {$namaRak} | Deskripsi: {$deskripsiBuku}\n";
             }
         }
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.groq.key'),
-            'Content-Type' => 'application/json',
-        ])->post('https://api.groq.com/openai/v1/chat/completions', [
-
+        $payload = [
             'model' => 'llama-3.3-70b-versatile',
-
             'messages' => [
-
                 [
                     'role' => 'system',
                     'content' => '
-            Kamu adalah AI Asisten Perpustakaan.
+Kamu adalah Pustika, AI Asisten Perpustakaan DDI Cambalagi yang cerdas, ramah, interaktif, dan to the point.
 
-            Jawablah HANYA berdasarkan data yang diberikan.
+ATURAN UTAMA IDENTITAS & PEMBUAT:
+1. JANGAN PERNAH menyebutkan nama pembuat atau pencipta (Fadli Idrus / mahasiswa UNITAMA) jika pengguna hanya bertanya: "siapa kamu", "kamu siapa", atau perkenalan umum sejenis. Untuk pertanyaan "siapa kamu", cukup jawab bahwa kamu adalah Pustika, AI Asisten Perpustakaan DDI Cambalagi yang bertugas membantu mencari buku dan informasi perpustakaan.
+2. Identitas pembuat (Fadli Idrus, mahasiswa UNITAMA) **HANYA BOLEH** diceritakan jika pengguna secara spesifik menanyakan tentang pembuat, pencipta, atau pengembang (contoh: "siapa yang menciptakan kamu?", "siapa yang buat kamu?").
 
-            Jika DATA TIDAK DITEMUKAN maka jawab:
+Aturan Lainnya:
+1. JANGAN pernah menyebutkan informasi **Rak** (seperti Rak: Campuran) saat pengguna hanya mencari, meminta daftar, atau bertanya tentang buku, KECUALI jika pengguna secara spesifik menanyakan lokasi, letak, posisi, atau nomor rak buku tersebut.
+2. Jika hasil pencarian menemukan **lebih dari satu buku**, tampilkan daftar buku tersebut secara jelas dengan menyertakan **Judul, Pengarang, dan Kelas** masing-masing buku. Setelah itu tanyakan kepada pengguna dengan ramah: "Kamu mau dijelaskan mengenai buku yang mana?"
+3. Jika pengguna meminta penjelasan spesifik untuk **satu buku tertentu**, berikan ringkasan atau penjelasan singkat mengenai isi/materi buku tersebut berdasarkan data "Deskripsi" yang tersedia tanpa mengulang-ulang metadata secara kaku.
+4. Jika ditemukan data buku yang judul, pengarang, dan kelasnya sama persis lebih dari satu di dalam metadata, gabungkan penjelasannya secara umum tanpa perlu menanyakan tentang "edisi" atau mengarang hal yang tidak ada di data.
+5. Jangan mengarang data di luar data buku yang diberikan.
+6. Jika "DATA TIDAK DITEMUKAN", jawab dengan ramah: "Maaf, buku yang kamu cari tidak ditemukan di perpustakaan kami."
+                    '
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "Pertanyaan: {$question}\n\nData Buku yang Tersedia:\n{$metadata}"
+                ]
+            ]
+        ];
 
-            "Maaf, buku yang Anda cari tidak ditemukan."
-
-            Jangan mengarang data.
-
-            Berikan jawaban yang singkat dan ramah.
-            '
-                        ],
-
-                        [
-                            'role' => 'user',
-                            'content' => "
-
-            Pertanyaan:
-
-            {$question}
-
-            Data Buku:
-
-            {$metadata}
-
-            "
-                        ]
-
-                    ]
-
-                ]);
+        $response = $this->sendToGroqWithFallback($payload);
 
         return $response->json()['choices'][0]['message']['content'];
     }
@@ -175,199 +140,96 @@ class AIChatController extends Controller
             'penerbit',
             'rak_buku'
         ]);
-                if (!empty($intent['judul'])) {
 
-                    $keywords = preg_split('/\s+/', trim($intent['judul']));
+        if (!empty($intent['judul'])) {
+            $keywords = preg_split('/\s+/', trim($intent['judul']));
 
-                    $query->where(function ($q) use ($keywords) {
-
-                        foreach ($keywords as $word) {
-
-                            $q->where(function ($sub) use ($word) {
-
-                                $sub->where("judul", 'like', "%{$word}%");
-                                    // ->orWhere(DB::raw("LOWER('deskripsi')"), 'like', "%{strtolower($word)}%");
-
-                            });
-
-                        }
-
-                    });
-
-                }
-
-                if (!empty($intent['pengarang'])) {
-                    $query->where('pengarang', 'like', '%' . $intent['pengarang'] . '%');
-                }
-                if (!empty($intent['penerbit'])) {
-                    $query->whereHas('penerbit', function ($q) use ($intent) {
-                        $q->where('nama', 'like', '%' . $intent['penerbit'] . '%');
+            $query->where(function ($q) use ($keywords) {
+                foreach ($keywords as $word) {
+                    $q->where(function ($sub) use ($word) {
+                        $sub->where('judul', 'like', "%{$word}%")
+                            ->orWhere('pengarang', 'like', "%{$word}%")
+                            ->orWhere('deskripsi', 'like', "%{$word}%");
                     });
                 }
-                if (!empty($intent['tahun'])) {
-                    $query->where('tahun', $intent['tahun']);
-                }
-                if (!empty($intent['kelas'])) {
-                    $query->whereHas('kelas', function ($q) use ($intent) {
-                        $q->where('nama', 'like', '%' . $intent['kelas'] . '%');
-                    });
-                }
-                if (!empty($intent['rak'])) {
-                    $query->whereHas('rak_buku', function ($q) use ($intent) {
-                        $q->where('nama', 'like', '%' . $intent['rak'] . '%');
-                    });
-                }
-           
-            
-        
+            });
+        }
 
+        if (!empty($intent['pengarang'])) {
+            $query->where('pengarang', 'like', '%' . $intent['pengarang'] . '%');
+        }
 
-        return $query->get();
+        if (!empty($intent['penerbit'])) {
+            $query->whereHas('penerbit', function ($q) use ($intent) {
+                $q->where('nama_penerbit', 'like', '%' . $intent['penerbit'] . '%');
+            });
+        }
+
+        if (!empty($intent['tahun'])) {
+            $query->where('tahun', $intent['tahun']);
+        }
+
+        if (!empty($intent['kelas'])) {
+            $kelasInput = $intent['kelas'];
+            $query->whereHas('kelas', function ($q) use ($kelasInput) {
+                $q->where('nama', 'like', '%' . $kelasInput . '%')
+                  ->orWhere('deskripsi', 'like', '%' . $kelasInput . '%');
+            });
+        }
+
+        if (!empty($intent['rak'])) {
+            $query->whereHas('rak_buku', function ($q) use ($intent) {
+                $q->where('nama_rak', 'like', '%' . $intent['rak'] . '%');
+            });
+        }
+
+        // Dibatasi maksimal 5 buku saja untuk menghemat token dan menjaga kerapian chat
+        return $query->take(5)->get();
     }
 
-
-
-    private  function extractIntent($message)
+    private function extractIntent($message)
     {
-            // $message = strtolower($message);
-            $prompt = <<<'PROMPT'
-            Kamu adalah AI Parser untuk Sistem Informasi Perpustakaan.
-
-Tugasmu adalah mengubah pertanyaan pengguna menjadi JSON terstruktur yang akan digunakan untuk pencarian data buku di database.
+        $prompt = <<<'PROMPT'
+Kamu adalah AI Parser untuk Sistem Informasi Perpustakaan.
+Tugasmu adalah menganalisis pesan pengguna dan mengubahnya menjadi JSON terstruktur untuk pencarian database buku.
 
 Aturan:
+1. Perbaiki kesalahan ejaan (typo) sesuai kaidah Bahasa Indonesia.
+2. Ekstrak informasi sedetail mungkin dari pesan pengguna ke dalam field berikut:
+   - "judul": untuk nama buku atau topik buku yang dicari (contoh: "akidah akhlak", "pkn").
+   - "pengarang": nama penulis/pengarang buku jika disebutkan (contoh: "usman").
+   - "penerbit": nama penerbit jika disebutkan.
+   - "kelas": jenjang kelas yang diminta (contoh: "10", "11", "12", "X", "XI", "XII").
+   - "tahun": tahun terbit jika ada.
+   - "rak": lokasi rak jika ditanyakan.
+3. Jika suatu informasi tidak disebutkan oleh pengguna, biarkan kosong ("").
 
-1. Perbaiki terlebih dahulu kesalahan ejaan (typo) sesuai kaidah Bahasa Indonesia.
-2. Jangan mengubah maksud atau konteks pertanyaan pengguna.
-3. Gunakan hasil perbaikan ejaan sebagai dasar untuk melakukan parsing.
-4. Identifikasi informasi yang terdapat pada pertanyaan pengguna.
-5. Jika suatu informasi tidak ada, isi dengan string kosong ("").
-6. Tentukan nilai "intent" berdasarkan maksud pertanyaan pengguna.
-
-Kemungkinan nilai intent:
-- cari_buku
-- cari_pengarang
-- cari_penerbit
-- cari_kelas
-- cari_rak
-- cari_tahun
-- rekomendasi_buku
-- jumlah_buku
-- lainnya
-
-Output HARUS berupa JSON VALID.
-
-Format:
-
+Format Output (JSON Valid Tanpa Markdown):
 {
-  "intent": "",
+  "intent": "cari_buku",
   "judul": "",
   "pengarang": "",
   "penerbit": "",
-  "kelas": "",
-  "tahun": "",
-  "rak": ""
-}
-
-Aturan Output:
-- Jangan menambahkan penjelasan.
-- Jangan menggunakan markdown.
-- Jangan menggunakan tanda ```json.
-- Hanya tampilkan JSON yang valid.
-- Semua key wajib ada.
-- Jika nilainya tidak diketahui, isi dengan string kosong ("").
-
-Contoh:
-
-Input:
-aya cari buku matmatika klas 11
-
-Output:
-{
-  "intent": "cari_buku",
-  "judul": "Matematika",
-  "pengarang": "",
-  "penerbit": "",
-  "kelas": "11",
-  "tahun": "",
-  "rak": ""
-}
-
-Input:
-buku biolog karya irnaningtyas
-
-Output:
-{
-  "intent": "cari_buku",
-  "judul": "Biologi",
-  "pengarang": "Irnaningtyas",
-  "penerbit": "",
-  "kelas": "",
-  "tahun": "",
-  "rak": ""
-}
-
-Input:
-ada buku terbitan erlangga
-
-Output:
-{
-  "intent": "cari_penerbit",
-  "judul": "",
-  "pengarang": "",
-  "penerbit": "Erlangga",
   "kelas": "",
   "tahun": "",
   "rak": ""
 }
 PROMPT;
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . config('services.groq.key'),
-                'Content-Type' => 'application/json',
-            ])->post('https://api.groq.com/openai/v1/chat/completions', [
 
-                'model' => 'llama-3.3-70b-versatile',
+        $payload = [
+            'model' => 'llama-3.3-70b-versatile',
+            'messages' => [
+                ['role' => 'system', 'content' => $prompt],
+                ['role' => 'user', 'content' => $message]
+            ],
+            'response_format' => ['type' => 'json_object']
+        ];
 
-                'messages' => [
+        $response = $this->sendToGroqWithFallback($payload);
 
-                    [
-                        'role' => 'system',
-                        'content' => $prompt
-                    ],
-
-                    [
-                        'role' => 'user',
-                        'content' => $message
-                    ]
-
-                ],
-
-                // Memaksa model menghasilkan JSON
-                'response_format' => [
-                    'type' => 'json_object'
-                ]
-
-            ]);
-            
-
-
-            if ($response->failed()) {
-                    Kueri::create(["text" => "Groq Error"]);
-                throw new \Exception(
-                    $response->json()['error']['message'] ?? 'Groq Error'
-                );
-            }
-            if (!isset($response['choices'][0]['message']['content'])) {
-                Kueri::create(["text" => json_encode($response)]);
-                throw new \Exception('Response Groq tidak memiliki field choices. Response: ' . json_encode($response));
-            }
-
-            $content = data_get(
-                $response->json(),
-                'choices.0.message.content'
-            );
-            Kueri::create(["text" => $content]);
-            
-            return json_decode($content, true);
-        }
+        $content = data_get($response->json(), 'choices.0.message.content');
+        Kueri::create(["text" => $content]);
+        
+        return json_decode($content, true) ?? [];
+    }
 }

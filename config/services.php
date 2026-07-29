@@ -14,7 +14,12 @@ return [
     |
     */
     'groq' => [
-        'key' => env('GROQ_API_KEY'),
+        'keys' => [
+            env('GROQ_API_KEY1'),
+            env('GROQ_API_KEY2'),
+            env('GROQ_API_KEY3'),
+            env('GROQ_API_KEY4'),
+        ],
     ],
 
     'postmark' => [

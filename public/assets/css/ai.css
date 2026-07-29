@@ -47,7 +47,8 @@
 
     width:min(700px,100vw);
 
-    height:100vh;
+    height: 100dvh; 
+    max-height: 100dvh;
 
     background:white;
 
@@ -238,6 +239,8 @@
 
     border-top:1px solid #ddd;
 
+    margin-bottom: env(safe-area-inset-bottom, 15px);
+
     background:white;
 
 }
@@ -309,7 +312,6 @@
     font-size:15px;
     line-height:1.6;
     box-shadow:0 3px 10px rgba(0,0,0,.08);
-
     word-break:break-word;
     overflow-wrap:anywhere;
 
@@ -328,6 +330,7 @@
 .chat-row.ai .chat-bubble{
 
     background:white;
+    white-space: pre-line;
 
     border-bottom-left-radius:5px;
 
