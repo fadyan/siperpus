@@ -11,13 +11,13 @@
         <ul class="navbar-nav ms-auto">
             <li class="nav-item dropdown user-menu">
                 <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                    <img src="{{ asset('assets/img/user2-160x160.jpg') }}" class="user-image rounded-circle shadow" alt="User Image" />
+                    <img src="{{ asset('assets/img/avatar3.png') }}" class="user-image rounded-circle shadow" alt="User Image" />
                     <span class="d-none d-md-inline">{{ strtoupper(auth()->user()->nama) }}</span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
                     @if(auth()->user()->level === "admin")
                     <li class="user-header text-bg-primary">
-                        <img src="{{ asset('assets/img/user2-160x160.jpg') }}" class="rounded-circle shadow" alt="User Image" />
+                        <img src="{{ asset('assets/img/avatar3.png') }}" class="rounded-circle shadow" alt="User Image" />
                         <p>ADMIN</p>
                     </li>
                     <li class="user-footer">
@@ -27,7 +27,7 @@
                     @endif
                     @if(auth()->user()->level === "siswa")
                     <li class="user-header text-bg-primary">
-                        <img src="{{ asset('assets/img/user2-160x160.jpg') }}" class="rounded-circle shadow" alt="User Image" />
+                        <img src="{{ asset('assets/img/avatar3.png') }}" class="rounded-circle shadow" alt="User Image" />
                         <p>SISWA</p>
                     </li>
                     <li class="user-footer">
@@ -37,7 +37,7 @@
                     @endif
                     @if(auth()->user()->level === "pegawai")
                     <li class="user-header text-bg-primary">
-                        <img src="{{ asset('assets/img/user2-160x160.jpg') }}" class="rounded-circle shadow" alt="User Image" />
+                        <img src="{{ asset('assets/img/avatar3.png') }}" class="rounded-circle shadow" alt="User Image" />
                         <p>Pegawai</p>
                     </li>
                     <li class="user-footer">

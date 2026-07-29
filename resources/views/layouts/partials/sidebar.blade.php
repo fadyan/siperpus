@@ -1,7 +1,7 @@
 <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
     <div class="sidebar-brand">
         <a href="/" class="brand-link">
-            <img src="{{ asset('assets/img/AdminLTELogo.png') }}" alt="Logo" class="brand-image opacity-75 shadow" />
+            <img src="{{ asset('assets/img/logo.png') }}" alt="Logo" class="brand-image opacity-90 shadow" />
             <span class="brand-text fw-light">Siperpus DDI Cambalagi</span>
         </a>
     </div>
