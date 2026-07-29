@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 Stok : ${buku.jumlah}
                             </span>
 
-                            <a href="${window.dashboardConfig.detailUrl}/${buku.id}"
+                            <a href="/buku/buku/${buku.id}/detail"
                                 class="btn btn-info btn-sm">
                                 <i class="bi bi-eye"></i> Detail
                             </a>

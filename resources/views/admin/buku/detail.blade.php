@@ -20,6 +20,10 @@
                             <img src="{{ asset('upload/'.$buku->cover) }}"
                                  class="img-fluid rounded shadow"
                                  style="max-height:450px">
+                        @else
+                            <img src="{{ asset('assets/img/default-book.jpg') }}"
+                                 class="img-fluid rounded shadow"
+                                 style="max-height:450px">
                         @endif
 
                     </div>
